@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
 
@@ -21,10 +22,14 @@ namespace AutoResxTranslator
 {
 	public partial class frmMain : Form
 	{
-		public frmMain()
+        private GTranslateService gTranslateService;
+
+        public frmMain()
 		{
 			InitializeComponent();
-		}
+            gTranslateService = new GTranslateService();
+
+        }
 
 		private readonly Dictionary<string, string> _languages =
 			new Dictionary<string, string>
@@ -294,10 +299,6 @@ namespace AutoResxTranslator
 						if (string.IsNullOrWhiteSpace(orgText))
 							continue;
 
-						// There is no longer a key to validate
-						// the key
-						var textTranslatorUrlKey = "";
-
 						string translated = string.Empty;
 						bool success = false;
 						trycount = 0;
@@ -305,7 +306,7 @@ namespace AutoResxTranslator
 						{
 							try
 							{
-								success = GTranslateService.Translate(orgText, sourceLng, destLng, textTranslatorUrlKey, out translated);
+								success = gTranslateService.Translate(orgText, sourceLng, destLng, out translated);
 							}
 							catch (Exception)
 							{
@@ -429,76 +430,7 @@ namespace AutoResxTranslator
 
 		internal delegate OpResult GetGoogleTranslatorKeyDeligate(string textToTranslate);
 
-		#region Old core to read old GoogleTranslation Validation Key
-
-		//internal OpResult GetGoogleTranslatorKey(string textToTranslate)
-		//{
-		//	if (IsGoogleTranslatorLoaded())
-		//	{
-		//		try
-		//		{
-		//			// ReSharper disable once PossibleNullReferenceException
-		//			object result = webBrowser.Document.InvokeScript("Vj", new object[] { textToTranslate });
-		//			if (result == null)
-		//			{
-		//				return new OpResult
-		//				{
-		//					Success = false,
-		//					Result = "Failed to find the translation function! Cantact the author please.\n"
-		//				};
-		//			}
-		//			return new OpResult
-		//			{
-		//				Success = true,
-		//				Result = result.ToString()
-		//			};
-		//		}
-		//		catch (Exception ex)
-		//		{
-		//			return new OpResult
-		//			{
-		//				Success = false,
-		//				Result = ex.Message
-		//			};
-		//		}
-		//	}
-		//	else
-		//	{
-		//		return new OpResult
-		//		{
-		//			Success = false,
-		//			Result = "Google Translator is not loaded yet!"
-		//		};
-		//	}
-		//}
-
-		//internal OpResult GetGoogleTranslatorKey_UiThread(string textToTranslate)
-		//{
-		//	if (this.InvokeRequired)
-		//	{
-		//		var asyncHandler = this.BeginInvoke(new GetGoogleTranslatorKeyDeligate(GetGoogleTranslatorKey),
-		//			new object[] {textToTranslate});
-
-		//		asyncHandler.AsyncWaitHandle.WaitOne();
-
-		//		var result = this.EndInvoke(asyncHandler) as OpResult;
-		//		if (result != null)
-		//		{
-		//			return result;
-		//		}
-		//		return new OpResult()
-		//		{
-		//			Success = false,
-		//			Result = "Failed to get the key for the translator from main ui thread."
-		//		};
-		//	}
-		//	else
-		//	{
-		//		return GetGoogleTranslatorKey(textToTranslate);
-		//	}
-		//}
-
-		#endregion
+		
 
 
 		bool IsGoogleTranslatorLoaded()
@@ -536,17 +468,17 @@ namespace AutoResxTranslator
 			var lngDest = ((KeyValuePair<string, string>)cmbDesc.SelectedItem).Key;
 			var text = txtSrc.Text;
 
-			// There is no longer a key to validate
-			var textTranslatorUrlKey = "";
 
 			IsBusy(true);
-			GTranslateService.TranslateAsync(
-				text, lngSrc, lngDest, textTranslatorUrlKey,
-				(success, result) =>
-				{
-					SetResult(result);
-					IsBusy(false);
-				});
+
+            Task.Run(async () =>
+            {
+                var result = await gTranslateService.TranslateAsync(text, lngSrc, lngDest);
+
+                SetResult(result);
+                IsBusy(false);
+
+            });
 		}
 
 		private void btnSelectResxSource_Click(object sender, EventArgs e)
